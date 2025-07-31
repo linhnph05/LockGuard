@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  # MySQL Database
+  db:
+    build:
+      context: ./db
+    container_name: smartdoor_db
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+      MYSQL_DATABASE: iot
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - smartdoor_network
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "-ppass"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 30s
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartdoor_backend
+    environment:
+      - DB_HOST=db
+      - DB_USER=user
+      - DB_PASSWORD=pass
+      - DB_NAME=iot
+      - PORT=5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smartdoor_network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smartdoor_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - smartdoor_network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
+networks:
+  smartdoor_network:
+    driver: bridge
