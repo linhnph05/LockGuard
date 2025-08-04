@@ -5,7 +5,7 @@ services:
   db:
     build:
       context: ./db
-    container_name: smartdoor_db
+    container_name: lockguard_db
     environment:
       MYSQL_ROOT_PASSWORD: pass
       MYSQL_DATABASE: iot
@@ -16,7 +16,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     networks:
-      - smartdoor_network
+      - lockguard_network
     healthcheck:
       test:
         ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "user", "-ppass"]
@@ -30,20 +30,22 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: smartdoor_backend
+    container_name: lockguard_backend
     environment:
       - DB_HOST=db
       - DB_USER=user
       - DB_PASSWORD=pass
       - DB_NAME=iot
       - PORT=5000
+      - EMAIL_USER=nphlinh23@clc.fitus.edu.vn
+      - EMAIL_PASS=wqnv revk qmig llmu
     ports:
       - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - smartdoor_network
+      - lockguard_network
     restart: unless-stopped
 
   # Frontend
@@ -51,18 +53,18 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: smartdoor_frontend
+    container_name: lockguard_frontend
     ports:
       - "3000:3000"
     depends_on:
       - backend
     networks:
-      - smartdoor_network
+      - lockguard_network
     restart: unless-stopped
 
 volumes:
   db_data:
 
 networks:
-  smartdoor_network:
+  lockguard_network:
     driver: bridge

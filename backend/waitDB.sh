@@ -7,5 +7,5 @@ until nc -z db 3306; do
   sleep 2
 done
 
-echo "Database is ready!"
+echo "Database is ready"
 echo "Starting backend application..."
