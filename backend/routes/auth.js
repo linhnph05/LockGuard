@@ -8,7 +8,6 @@ const { JWT_SECRET } = require("../middleware/auth");
 
 const router = express.Router();
 
-// Email transporter configuration
 const createTransporter = () => {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
@@ -18,94 +17,77 @@ const createTransporter = () => {
 
   if (!emailUser || !emailPass) {
     console.warn(
-      "Email credentials not provided. Email functionality will be disabled."
+      "Wrong email config. Please contact the admin to fix this issue."
     );
     return null;
   }
 
   return nodemailer.createTransport({
     service: "gmail",
-    host: 'smtp.gmail.com',
+    host: "smtp.gmail.com",
     port: 465,
     secure: true,
     auth: {
       user: emailUser,
-      pass: emailPass, // This should be an App Password, not regular password
+      pass: emailPass,
     },
   });
 };
 
-// Register
 router.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
     if (!username || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // Check if user already exists
     const [existingUsers] = await db.query(
       "SELECT * FROM users WHERE username = ? OR email = ?",
       [username, email]
     );
-
-    if (existingUsers.length > 0) {
-      return res
-        .status(400)
-        .json({ error: "Username or email already exists" });
+    if (existingUsers.length == 0) {
+      return res.status(400).json({ error: "Username not exists" });
     }
 
-    // Hash password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Create user
     const [result] = await db.query(
-      "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-      [username, email, hashedPassword]
+      "UPDATE users SET email = ?, password = ? WHERE username = ?",
+      [email, hashedPassword, username]
     );
 
-    res.status(201).json({
-      message: "User created successfully",
-      userId: result.insertId,
-    });
+    res
+      .status(201)
+      .json({ message: "User created successfully", userId: result.insertId });
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Login
 router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
-
     if (!username || !password) {
       return res
         .status(400)
         .json({ error: "Username and password are required" });
     }
 
-    // Find user
     const [users] = await db.query(
       "SELECT * FROM users WHERE username = ? OR email = ?",
       [username, username]
     );
-
     if (users.length === 0) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "User not found" });
     }
 
     const user = users[0];
-
-    // Check password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate JWT token
     const token = jwt.sign(
       {
         userId: user.id,
@@ -131,7 +113,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Forgot password
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -140,54 +121,42 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // Find user by email
     const [users] = await db.query("SELECT * FROM users WHERE email = ?", [
       email,
     ]);
-
     if (users.length === 0) {
       return res.status(404).json({ error: "Email not found" });
     }
-
     const user = users[0];
 
-    // Generate reset token
     const resetToken = uuidv4();
     const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
 
-    // Save reset token to database
     await db.query(
       "UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?",
       [resetToken, resetTokenExpires, user.id]
     );
 
-    // Check if email functionality is available
     const transporter = createTransporter();
     if (!transporter) {
-      // Save reset token anyway for testing purposes
-      console.log(
-        `Password reset requested for ${email}. Reset token: ${resetToken}`
-      );
       return res.json({
         message:
-          "Password reset token generated. Check server logs for token (email disabled).",
-        resetToken: resetToken, // Only for development - remove in production
+          "Something wrong with email config. Please contact the admin to fix this issue.",
+        resetToken: resetToken,
       });
     }
 
-    // Send reset email
-    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+    const resetUrl = `http://localhost/reset-password?token=${resetToken}`;
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: "Smart Door - Password Reset",
+      subject: "LockGuard - Password Reset",
       html: `
         <h1>Password Reset Request</h1>
-        <p>You requested a password reset for your Smart Door account.</p>
-        <p>Click the link below to reset your password:</p>
+        <p>You requested a password reset for your LockGuard account.</p>
+        <p>Here is the link to reset your password:</p>
         <a href="${resetUrl}">${resetUrl}</a>
         <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this, please ignore this email.</p>
       `,
     };
 
@@ -195,12 +164,11 @@ router.post("/forgot-password", async (req, res) => {
       await transporter.sendMail(mailOptions);
       res.json({ message: "Password reset email sent" });
     } catch (emailError) {
-      console.error("Email sending failed:", emailError);
-      // Still provide the token for development/testing
+      console.error("Email sending fail:", emailError);
       res.json({
         message:
           "Email sending failed, but reset token generated. Check server logs.",
-        resetToken: resetToken, // Only for development - remove in production
+        resetToken: resetToken,
       });
     }
   } catch (error) {
@@ -209,18 +177,15 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-// Reset password
 router.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-
     if (!token || !newPassword) {
       return res
         .status(400)
         .json({ error: "Token and new password are required" });
     }
 
-    // Find user by reset token
     const [users] = await db.query(
       "SELECT * FROM users WHERE reset_token = ? AND reset_token_expires > NOW()",
       [token]
@@ -232,11 +197,9 @@ router.post("/reset-password", async (req, res) => {
 
     const user = users[0];
 
-    // Hash new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password and clear reset token
     await db.query(
       "UPDATE users SET password = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?",
       [hashedPassword, user.id]
@@ -245,6 +208,63 @@ router.post("/reset-password", async (req, res) => {
     res.json({ message: "Password reset successful" });
   } catch (error) {
     console.error("Reset password error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Change passwordKey for IoT device
+router.post("/change-password-key", async (req, res) => {
+  try {
+    const { newPasswordKey } = req.body;
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    if (!newPasswordKey) {
+      return res.status(400).json({ error: "New password key is required" });
+    }
+
+    if (newPasswordKey.length !== 6) {
+      return res
+        .status(400)
+        .json({ error: "Password key must be exactly 6 characters" });
+    }
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Get current user data
+    const [users] = await db.query("SELECT * FROM users WHERE id = ?", [
+      userId,
+    ]);
+    if (users.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const user = users[0];
+
+    // Update password key directly (no current password verification needed)
+    await db.query("UPDATE users SET passwordKey = ? WHERE id = ?", [
+      newPasswordKey,
+      userId,
+    ]);
+
+    res.json({
+      message: "Password key updated successfully",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    console.error("Change password key error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

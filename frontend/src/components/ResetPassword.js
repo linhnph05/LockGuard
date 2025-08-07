@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   Paper,
@@ -52,7 +52,7 @@ const ResetPassword = () => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/auth/reset-password",
+        "/api/auth/reset-password",
         {
           method: "POST",
           headers: {
@@ -78,6 +78,7 @@ const ResetPassword = () => {
         setError(data.error || "Không thể đặt lại mật khẩu");
       }
     } catch (error) {
+      console.log("Error:", error);
       setError("Lỗi kết nối đến server");
     } finally {
       setLoading(false);

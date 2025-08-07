@@ -4,26 +4,12 @@ USE iot;
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
-  email VARCHAR(100) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100) UNIQUE,
+  password VARCHAR(255),
+  passwordKey VARCHAR(6),
   reset_token VARCHAR(255) NULL,
-  reset_token_expires DATETIME NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  reset_token_expires DATETIME NULL
 );
 
-CREATE TABLE IF NOT EXISTS pir_logs (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  value BOOLEAN
-);
-
-CREATE TABLE IF NOT EXISTS password_logs (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  value BOOLEAN
-);
-
--- (password: admin123)
-INSERT INTO users (username, email, password) VALUES 
-('admin', 'linh.nph05@gmail.com', '$2b$10$rOYL.qyJqS3c8UtF3PNWwOUbA7nZCh2hLo7WvNnXkDzN8YXhL4PJ.');
+INSERT INTO users (username) VALUES 
+('lockguard1');
