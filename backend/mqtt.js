@@ -1,6 +1,8 @@
 const mqtt = require("mqtt");
 const db = require("./db");
+const {createTransporter} = require("./routes/auth");
 const FirebaseManager = require("./firebase");
+
 
 class MQTTManager {
   constructor() {
@@ -77,7 +79,7 @@ class MQTTManager {
   }
 
   async subscribeToUserTopics(username) {
-    const topics = [`${username}/esp32/pir`, `${username}/esp32/password`];
+    const topics = [`${username}/esp32/pir`, `${username}/esp32/password`, `${username}/esp32/notify`];
 
     for (const topic of topics) {
       if (!this.subscribedTopics.has(topic)) {
@@ -112,6 +114,9 @@ class MQTTManager {
           break;
         case "password":
           await this.handlePasswordData(username, message);
+          break;
+        case "notify":
+          await this.handleNotification(username, message);
           break;
         default:
           console.log(`Unknown sensor type: ${sensorType}`);
@@ -187,17 +192,38 @@ class MQTTManager {
     });
   }
 
-  // Firebase data access methods
-  async getUserPirDataFromFirebase(username, date = null) {
-    return await this.firebase.getUserPirData(username, date);
-  }
-
-  async getUserPasswordHistoryFromFirebase(username, date = null) {
-    return await this.firebase.getUserPasswordHistory(username, date);
-  }
-
-  async getAllUserDataFromFirebase(username) {
-    return await this.firebase.getAllUserData(username);
+  async handleNotification(username, notificationValue) {
+    if(notificationValue === "1") {
+      try {
+        const [users] = await db.query("SELECT email FROM users WHERE username = ?", [username]);
+        if (users.length > 0) {
+          const userEmail = users[0].email;
+          console.log(`Sending notification to ${userEmail}: Someone is at the door!`);
+          const transporter = createTransporter();
+          const dashboardUrl = "http://localhost/";
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: userEmail,
+            subject: `LockGuard - Ai đó đang cố gắng đột nhập nhà của bạn ${username} ơi!`,
+            html: `
+              <h1>Thông báo từ LockGuard</h1>
+              <p>Hệ thống phát hiện có người đang cố gắng đột nhập vào nhà của bạn! Vui lòng kiểm tra ngay lập tức!</p>
+              <p>Hãy đăng nhập dashboard ngay: <a href="${dashboardUrl}">${dashboardUrl}</a></p>
+            `,
+          };
+          try {
+            await transporter.sendMail(mailOptions);
+          } catch (emailError) {
+            console.error("Gửi thông báo email thất bại:", emailError);
+          }
+        }
+        await fetch(`https://www.pushsafer.com/api?k=i0aigx951gH6kX0mtQfD&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`, {
+          method: "GET",
+        });
+      } catch (error) {
+        console.error("Error handling notification:", error);
+      }
+    }
   }
 }
 

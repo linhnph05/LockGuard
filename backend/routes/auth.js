@@ -6,7 +6,7 @@ const nodemailer = require("nodemailer");
 const db = require("../db");
 const { JWT_SECRET } = require("../middleware/auth");
 
-const router = express.Router();
+const authRoutes = express.Router();
 
 const createTransporter = () => {
   const emailUser = process.env.EMAIL_USER;
@@ -34,7 +34,7 @@ const createTransporter = () => {
   });
 };
 
-router.post("/register", async (req, res) => {
+authRoutes.post("/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
     if (!username || !email || !password) {
@@ -65,7 +65,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+authRoutes.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -113,7 +113,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/forgot-password", async (req, res) => {
+authRoutes.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -177,7 +177,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+authRoutes.post("/reset-password", async (req, res) => {
   try {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) {
@@ -213,7 +213,7 @@ router.post("/reset-password", async (req, res) => {
 });
 
 // Change passwordKey for IoT device
-router.post("/change-password-key", async (req, res) => {
+authRoutes.post("/change-password-key", async (req, res) => {
   try {
     const { newPasswordKey } = req.body;
     const token = req.headers.authorization?.split(" ")[1];
@@ -269,4 +269,4 @@ router.post("/change-password-key", async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {authRoutes, createTransporter};

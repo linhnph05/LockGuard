@@ -18,44 +18,40 @@ import { Settings as SettingsIcon } from "@mui/icons-material";
 import { startRealTimePolling } from "../services/firebase";
 
 const Dashboard = ({ user, onLogout }) => {
-  const [doorStatus, setDoorStatus] = useState(null);
-  const [pirLogs, setPirLogs] = useState(null);
+  const [passwordHistory, setPasswordHistory] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
-  // New state for Firebase chart data
-  const [firebasePirChartData, setFirebasePirChartData] = useState([]);
-  const [openJsonHistory, setOpenJsonHistory] = useState([]);
+  // State for user-specific PIR chart data
+  const [pirChartData, setPirChartData] = useState([]);
+
+  // State for user-specific password history chart data
+  const [passwordHistoryChartData, setPasswordHistoryChartData] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    // Start Firebase real-time polling
+    // Ensure we have a user to fetch data for
+    if (!user || !user.username) {
+      console.error("No user information available");
+      return;
+    }
+
+    // Start Firebase real-time polling with user-specific data
     const cleanup = startRealTimePolling(
-      (newDoorStatus) => {
-        setDoorStatus(newDoorStatus);
+      user.username, // Pass username to fetch user-specific data
+      (newPirData) => {
+        setPirChartData(newPirData);
         setLastUpdate(new Date().toLocaleTimeString());
-
-        // Process open.json data for chart
-        if (newDoorStatus && typeof newDoorStatus === "object") {
-          const openChartData = Object.entries(newDoorStatus)
-            .map(([key, value]) => ({
-              timestamp:
-                value.time || value.timestamp || new Date().toISOString(),
-              value: value.success ? 1 : 0, // Use success field: true = 1, false = 0
-              id: key,
-              ...value,
-            }))
-            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-            .slice(-50); // Keep last 50 entries
-
-          setOpenJsonHistory(openChartData);
-        }
       },
-      (newPirLogs) => {
-        setPirLogs(newPirLogs);
+      (newPasswordHistory) => {
+        setPasswordHistory(newPasswordHistory);
+        setLastUpdate(new Date().toLocaleTimeString());
+      },
+      (newPasswordHistoryChart) => {
+        setPasswordHistoryChartData(newPasswordHistoryChart);
         setLastUpdate(new Date().toLocaleTimeString());
       },
       2000 // Poll every 2 seconds
@@ -64,7 +60,7 @@ const Dashboard = ({ user, onLogout }) => {
     return () => {
       cleanup(); // Stop Firebase polling
     };
-  }, []);
+  }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -82,36 +78,20 @@ const Dashboard = ({ user, onLogout }) => {
     setSuccessMessage("");
   };
 
-  const formatPirLogsForDisplay = () => {
-    if (!pirLogs || typeof pirLogs !== "object") return [];
+  const formatPasswordHistoryForDisplay = () => {
+    if (!passwordHistory || typeof passwordHistory !== "object") return [];
 
-    return Object.entries(pirLogs)
+    return Object.entries(passwordHistory)
       .map(([key, value]) => ({
         id: key,
         ...value,
-        timestamp: value.timestamp || new Date().toISOString(),
+        timestamp: value.time || value.timestamp || new Date().toISOString(),
       }))
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .slice(0, 10); // Show last 10 entries
   };
 
-  // Update chart data when pirLogs changes
-  useEffect(() => {
-    if (pirLogs) {
-      // Process PIR logs for chart data - use pir field
-      const pirChartData = Object.entries(pirLogs)
-        .map(([key, value]) => ({
-          timestamp: value.time || value.timestamp || new Date().toISOString(),
-          value: value.success ? 1 : 0,
-          id: key,
-          ...value,
-        }))
-        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-        .slice(-50); // Keep last 50 entries
-
-      setFirebasePirChartData(pirChartData);
-    }
-  }, [pirLogs]);
+  // Remove the old useEffect for chart data processing since it's now handled in real-time
 
   return (
     <div>
@@ -143,8 +123,8 @@ const Dashboard = ({ user, onLogout }) => {
             Dashboard Giám Sát{" "}
           </Typography>
           <Typography variant="body1">
-            {" "}
-            Theo dõi trạng thái cảm biến và lịch sử truy cập thời gian thực
+            Theo dõi trạng thái cảm biến PIR và lịch sử kiểm tra mật khẩu của{" "}
+            {user.username}
           </Typography>
           {lastUpdate && (
             <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
@@ -159,22 +139,32 @@ const Dashboard = ({ user, onLogout }) => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Trạng thái cửa
+                  Trạng thái PIR gần đây
                 </Typography>
-                {doorStatus !== null ? (
+                {pirChartData && pirChartData.length > 0 ? (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                     <Chip
-                      label={doorStatus ? "MỞ" : "ĐÓNG"}
-                      color={doorStatus ? "error" : "success"}
+                      label={
+                        pirChartData[pirChartData.length - 1]?.value
+                          ? "PHÁT HIỆN"
+                          : "KHÔNG PHÁT HIỆN"
+                      }
+                      color={
+                        pirChartData[pirChartData.length - 1]?.value
+                          ? "error"
+                          : "success"
+                      }
                       variant="filled"
                     />
                     <Typography variant="body2">
-                      {doorStatus ? "Cửa đang mở" : "Cửa đang đóng"}
+                      {pirChartData[pirChartData.length - 1]?.value
+                        ? "Có chuyển động"
+                        : "Không có chuyển động"}
                     </Typography>
                   </Box>
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    Đang tải dữ liệu...
+                    Đang tải dữ liệu PIR...
                   </Typography>
                 )}
               </CardContent>
@@ -185,48 +175,38 @@ const Dashboard = ({ user, onLogout }) => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Lịch sử PIR gần đây
+                  Lịch sử kiểm tra mật khẩu
                 </Typography>
-                {pirLogs ? (
+                {passwordHistory ? (
                   <Box sx={{ maxHeight: 200, overflow: "auto" }}>
-                    {formatPirLogsForDisplay().map((log, index) => (
+                    {formatPasswordHistoryForDisplay().map((log, index) => (
                       <Box
                         key={log.id || index}
                         sx={{
                           mb: 1,
                           p: 1,
-                          bgcolor: "grey.50",
+                          bgcolor: log.success
+                            ? "success.light"
+                            : "error.light",
                           borderRadius: 1,
+                          opacity: 0.8,
                         }}
                       >
                         <Typography variant="body2">
-                          <strong>ID:</strong> {log.id}
+                          <strong>Kết quả:</strong>{" "}
+                          {log.success ? "Thành công" : "Thất bại"}
                         </Typography>
                         {log.timestamp && (
                           <Typography variant="caption" color="textSecondary">
                             {new Date(log.timestamp).toLocaleString()}
                           </Typography>
                         )}
-                        {Object.entries(log).map(([key, value]) => {
-                          if (key !== "id" && key !== "timestamp") {
-                            return (
-                              <Typography
-                                key={key}
-                                variant="caption"
-                                display="block"
-                              >
-                                <strong>{key}:</strong> {String(value)}
-                              </Typography>
-                            );
-                          }
-                          return null;
-                        })}
                       </Box>
                     ))}
                   </Box>
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    Đang tải dữ liệu...
+                    Đang tải dữ liệu lịch sử...
                   </Typography>
                 )}
               </CardContent>
@@ -235,13 +215,16 @@ const Dashboard = ({ user, onLogout }) => {
         </Grid>
 
         <LineChart
-          title="Open.json Data (success field)"
-          data={openJsonHistory}
+          title={`PIR Detection Data for ${user.username} (Last 10 Points)`}
+          data={pirChartData}
         />
-        <LineChart
-          title="PIR Logs Data (pir field)"
-          data={firebasePirChartData}
-        />
+
+        <Box sx={{ mt: 4 }}>
+          <LineChart
+            title={`Password Check History for ${user.username} (Last 10 Points)`}
+            data={passwordHistoryChartData}
+          />
+        </Box>
       </div>
 
       {/* Change Password Key Modal */}

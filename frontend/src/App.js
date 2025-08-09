@@ -30,7 +30,6 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 

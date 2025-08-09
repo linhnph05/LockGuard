@@ -23,11 +23,18 @@ Chart.register(
 );
 
 const LineChart = ({ title, data }) => {
-  // Format timestamps for display
+  // Format timestamps for display with full date and time
   const formatTimestamp = (timestamp) => {
     try {
       const date = new Date(timestamp);
-      return date.toLocaleTimeString();
+      return date.toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
     } catch (error) {
       return timestamp;
     }
@@ -39,29 +46,13 @@ const LineChart = ({ title, data }) => {
       {
         label: title,
         data: data.map((d) => d.value),
-        borderColor:
-          title.includes("PIR") || title.includes("pir field")
-            ? "#4caf50"
-            : title.includes("cửa") ||
-              title.includes("open.json") ||
-              title.includes("success field")
-            ? "#2196f3"
-            : title.includes("mật khẩu")
-            ? "#ff9800"
-            : "#9c27b0",
-        backgroundColor:
-          title.includes("PIR") || title.includes("pir field")
-            ? "rgba(76, 175, 80, 0.1)"
-            : title.includes("cửa") ||
-              title.includes("open.json") ||
-              title.includes("success field")
-            ? "rgba(33, 150, 243, 0.1)"
-            : title.includes("mật khẩu")
-            ? "rgba(255, 152, 0, 0.1)"
-            : "rgba(156, 39, 176, 0.1)",
+        borderColor: title.includes("Password") ? "#ff9800" : "#4caf50",
+        backgroundColor: title.includes("Password")
+          ? "rgba(255, 152, 0, 0.1)"
+          : "rgba(76, 175, 80, 0.1)",
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: 6,
+        pointHoverRadius: 8,
         fill: true,
       },
     ],
@@ -80,18 +71,17 @@ const LineChart = ({ title, data }) => {
         callbacks: {
           label: function (context) {
             const value = context.parsed.y;
-            if (title.includes("success field")) {
-              return `Success: ${value === 1 ? "True" : "False"}`;
-            } else if (title.includes("pir field")) {
-              return `PIR: ${value === 1 ? "Detected" : "Not Detected"}`;
-            } else if (title.includes("cửa") || title.includes("open.json")) {
-              return `Trạng thái: ${value === 1 ? "Mở" : "Đóng"}`;
-            } else if (title.includes("PIR")) {
-              return `Phát hiện: ${
-                value === 1 ? "Có chuyển động" : "Không có"
+            if (title.includes("Password")) {
+              return `Password Check: ${value === 1 ? "Success" : "Failed"}`;
+            } else {
+              return `PIR Detection: ${
+                value === 1 ? "Detected" : "No Detection"
               }`;
             }
-            return `Giá trị: ${value}`;
+          },
+          title: function (context) {
+            const dataPoint = data[context[0].dataIndex];
+            return formatTimestamp(dataPoint.timestamp);
           },
         },
       },
@@ -101,44 +91,36 @@ const LineChart = ({ title, data }) => {
         display: true,
         title: {
           display: true,
-          text: "Thời gian",
+          text: "Time (Day/Month/Year Hour:Min:Sec)",
         },
         ticks: {
           maxTicksLimit: 10,
+          maxRotation: 45,
+          minRotation: 45,
         },
       },
       y: {
         display: true,
         title: {
           display: true,
-          text: title.includes("success field")
-            ? "Success (0=False, 1=True)"
-            : title.includes("pir field")
-            ? "PIR Detection (0=No, 1=Yes)"
-            : title.includes("cửa") || title.includes("open.json")
-            ? "Trạng thái (0=Đóng, 1=Mở)"
-            : title.includes("PIR")
-            ? "Phát hiện (0=Không, 1=Có)"
-            : "Giá trị",
+          text: title.includes("Password")
+            ? "Password Check (0=Failed, 1=Success)"
+            : "PIR Detection (0=No Detection, 1=Detected)",
         },
         min: 0,
-        max:
-          title.includes("cửa") ||
-          title.includes("PIR") ||
-          title.includes("open.json") ||
-          title.includes("success field") ||
-          title.includes("pir field")
-            ? 1.2
-            : undefined,
+        max: 1.2,
         ticks: {
-          stepSize:
-            title.includes("cửa") ||
-            title.includes("PIR") ||
-            title.includes("open.json") ||
-            title.includes("success field") ||
-            title.includes("pir field")
-              ? 1
-              : undefined,
+          stepSize: 1,
+          callback: function (value) {
+            if (title.includes("Password")) {
+              if (value === 0) return "Failed";
+              if (value === 1) return "Success";
+            } else {
+              if (value === 0) return "No Detection";
+              if (value === 1) return "Detected";
+            }
+            return value;
+          },
         },
       },
     },
@@ -155,7 +137,7 @@ const LineChart = ({ title, data }) => {
         {title}
       </Typography>
       <Typography variant="body2" color="textSecondary" gutterBottom>
-        Tổng số điểm dữ liệu: {data.length}
+        Last {data.length} data points • Updated in real-time
       </Typography>
       <Box sx={{ height: 300, mt: 2 }}>
         {data.length > 0 ? (
