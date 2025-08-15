@@ -46,8 +46,14 @@ const LineChart = ({ title, data }) => {
       {
         label: title,
         data: data.map((d) => d.value),
-        borderColor: title.includes("Password") ? "#ff9800" : "#4caf50",
-        backgroundColor: title.includes("Password")
+        borderColor: title.includes("Door")
+          ? "#2196f3"
+          : title.includes("Password")
+          ? "#ff9800"
+          : "#4caf50",
+        backgroundColor: title.includes("Door")
+          ? "rgba(33, 150, 243, 0.1)"
+          : title.includes("Password")
           ? "rgba(255, 152, 0, 0.1)"
           : "rgba(76, 175, 80, 0.1)",
         tension: 0.4,
@@ -71,11 +77,15 @@ const LineChart = ({ title, data }) => {
         callbacks: {
           label: function (context) {
             const value = context.parsed.y;
-            if (title.includes("Password")) {
-              return `Password Check: ${value === 1 ? "Success" : "Failed"}`;
+            if (title.includes("Door")) {
+              return `Trạng thái cửa: ${value === 1 ? "Mở" : "Đóng"}`;
+            } else if (title.includes("Password")) {
+              return `Kiểm tra mật khẩu: ${
+                value === 1 ? "Thành công" : "Thất bại"
+              }`;
             } else {
-              return `PIR Detection: ${
-                value === 1 ? "Detected" : "No Detection"
+              return `Cảm biến PIR: ${
+                value === 1 ? "Phát hiện" : "Không phát hiện"
               }`;
             }
           },
@@ -91,7 +101,7 @@ const LineChart = ({ title, data }) => {
         display: true,
         title: {
           display: true,
-          text: "Time (Day/Month/Year Hour:Min:Sec)",
+          text: "Thời gian (Ngày/Tháng/Năm Giờ:Phút:Giây)",
         },
         ticks: {
           maxTicksLimit: 10,
@@ -103,21 +113,26 @@ const LineChart = ({ title, data }) => {
         display: true,
         title: {
           display: true,
-          text: title.includes("Password")
-            ? "Password Check (0=Failed, 1=Success)"
-            : "PIR Detection (0=No Detection, 1=Detected)",
+          text: title.includes("Door")
+            ? "Trạng thái cửa (0=Đóng, 1=Mở)"
+            : title.includes("Password")
+            ? "Kiểm tra mật khẩu (0=Thất bại, 1=Thành công)"
+            : "Cảm biến PIR (0=Không phát hiện, 1=Phát hiện)",
         },
         min: 0,
         max: 1.2,
         ticks: {
           stepSize: 1,
           callback: function (value) {
-            if (title.includes("Password")) {
-              if (value === 0) return "Failed";
-              if (value === 1) return "Success";
+            if (title.includes("Door")) {
+              if (value === 0) return "Đóng";
+              if (value === 1) return "Mở";
+            } else if (title.includes("Password")) {
+              if (value === 0) return "Thất bại";
+              if (value === 1) return "Thành công";
             } else {
-              if (value === 0) return "No Detection";
-              if (value === 1) return "Detected";
+              if (value === 0) return "Không phát hiện";
+              if (value === 1) return "Phát hiện";
             }
             return value;
           },
@@ -137,7 +152,7 @@ const LineChart = ({ title, data }) => {
         {title}
       </Typography>
       <Typography variant="body2" color="textSecondary" gutterBottom>
-        Last {data.length} data points • Updated in real-time
+        {data.length} điểm dữ liệu gần đây • Cập nhật theo thời gian thực
       </Typography>
       <Box sx={{ height: 300, mt: 2 }}>
         {data.length > 0 ? (

@@ -28,17 +28,17 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
 
     // Validation
     if (!newPasswordKey || !confirmPasswordKey) {
-      setError("All fields are required");
+      setError("Tất cả các trường đều bắt buộc");
       return;
     }
 
     if (newPasswordKey !== confirmPasswordKey) {
-      setError("Password keys do not match");
+      setError("Mật khẩu xác nhận không khớp");
       return;
     }
 
     if (newPasswordKey.length !== 6) {
-      setError("Password key must be exactly 6 characters");
+      setError("Mật khẩu phải có đúng 6 ký tự");
       return;
     }
 
@@ -47,7 +47,7 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        "http://localhost:5000/auth/change-password-key",
+        "/api/auth/change-password-key",
         {
           method: "POST",
           headers: {
@@ -63,14 +63,14 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
       const data = await response.json();
 
       if (response.ok) {
-        onSuccess("Password key updated successfully!");
+        onSuccess("Mật khẩu khoá đã được cập nhật thành công!");
         handleClose();
       } else {
-        setError(data.error || "Failed to update password key");
+        setError(data.error || "Không thể cập nhật mật khẩu khoá");
       }
     } catch (error) {
       console.error("Error changing password key:", error);
-      setError("Network error. Please try again.");
+      setError("Lỗi mạng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -89,9 +89,9 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <form onSubmit={handleSubmit}>
         <DialogTitle>
-          <Typography variant="h6">Change IoT Device Password Key</Typography>
+          <Typography variant="h6">Đổi mật khẩu khoá thiết bị IoT</Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-            Update the 6-digit password key used by your IoT device
+            Cập nhật mật khẩu 6 chữ số được sử dụng bởi thiết bị IoT của bạn
           </Typography>
         </DialogTitle>
 
@@ -104,7 +104,7 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
             )}
 
             <TextField
-              label="New Password Key"
+              label="Mật khẩu khoá mới"
               type={showNewPassword ? "text" : "password"}
               value={newPasswordKey}
               onChange={(e) => setNewPasswordKey(e.target.value)}
@@ -126,12 +126,12 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
                   </InputAdornment>
                 ),
               }}
-              helperText="Enter a new 6-digit password key for your IoT device"
+              helperText="Nhập mật khẩu 6 chữ số mới cho thiết bị IoT của bạn"
               error={newPasswordKey.length > 0 && newPasswordKey.length !== 6}
             />
 
             <TextField
-              label="Confirm New Password Key"
+              label="Xác nhận mật khẩu khoá mới"
               type={showConfirmPassword ? "text" : "password"}
               value={confirmPasswordKey}
               onChange={(e) => setConfirmPasswordKey(e.target.value)}
@@ -155,7 +155,7 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
                   </InputAdornment>
                 ),
               }}
-              helperText="Confirm your new 6-digit password key"
+              helperText="Xác nhận mật khẩu 6 chữ số mới của bạn"
               error={
                 confirmPasswordKey.length > 0 &&
                 confirmPasswordKey !== newPasswordKey
@@ -166,7 +166,7 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
 
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleClose} disabled={loading}>
-            Cancel
+            Huỷ
           </Button>
           <Button
             type="submit"
@@ -177,7 +177,7 @@ const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
               confirmPasswordKey !== newPasswordKey
             }
           >
-            {loading ? "Updating..." : "Update Password Key"}
+            {loading ? "Đang cập nhật..." : "Cập nhật mật khẩu khoá"}
           </Button>
         </DialogActions>
       </form>

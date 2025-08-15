@@ -146,17 +146,17 @@ authRoutes.post("/forgot-password", async (req, res) => {
       });
     }
 
-    const resetUrl = `http://localhost/reset-password?token=${resetToken}`;
+    const publicUrl = process.env.PUBLIC_URL || "http://localhost";
+    const resetUrl = `${publicUrl}/reset-password?token=${resetToken}`;
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
-      subject: "LockGuard - Password Reset",
+      subject: "LockGuard - Reset mật khẩu",
       html: `
-        <h1>Password Reset Request</h1>
-        <p>You requested a password reset for your LockGuard account.</p>
-        <p>Here is the link to reset your password:</p>
+        <p>Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản LockGuard của mình.</p>
+        <p>Đây là liên kết để đặt lại mật khẩu của bạn:</p>
         <a href="${resetUrl}">${resetUrl}</a>
-        <p>This link will expire in 1 hour.</p>
+        <p>Liên kết này sẽ hết hạn trong 1 giờ.</p>
       `,
     };
 

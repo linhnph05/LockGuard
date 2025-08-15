@@ -218,7 +218,7 @@ const Login = ({ onLogin }) => {
       >
         <Paper elevation={3} sx={{ padding: 4, width: "100%" }}>
           <Typography component="h1" variant="h4" align="center" gutterBottom>
-            LockGuard System
+            LockGuard 
           </Typography>
 
           <Tabs value={tabValue} onChange={handleTabChange} centered>

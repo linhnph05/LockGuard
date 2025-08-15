@@ -13,52 +13,54 @@ import {
   Chip,
   Alert,
   Snackbar,
+  ToggleButton,
+  ToggleButtonGroup,
+  CircularProgress,
 } from "@mui/material";
-import { Settings as SettingsIcon } from "@mui/icons-material";
-import { startRealTimePolling } from "../services/firebase";
+import {
+  Settings as SettingsIcon,
+  LockOpen as LockOpenIcon,
+  Lock as LockIcon,
+} from "@mui/icons-material";
+import { realTimeFetching } from "../services/firebase";
+import { controlServo } from "../services/servo";
 
 const Dashboard = ({ user, onLogout }) => {
-  const [passwordHistory, setPasswordHistory] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
-  // State for user-specific PIR chart data
-  const [pirChartData, setPirChartData] = useState([]);
+  // servo
+  const [servoAction, setServoAction] = useState("close");
+  const [servoLoading, setServoLoading] = useState(false);
+  const [servoMessage, setServoMessage] = useState("");
 
-  // State for user-specific password history chart data
-  const [passwordHistoryChartData, setPasswordHistoryChartData] = useState([]);
+  // line chart
+  const [pirChartData, setPirChartData] = useState([]);
+  const [doorHistoryData, setDoorHistoryData] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    // Ensure we have a user to fetch data for
     if (!user || !user.username) {
       console.error("No user information available");
       return;
     }
 
-    // Start Firebase real-time polling with user-specific data
-    const cleanup = startRealTimePolling(
-      user.username, // Pass username to fetch user-specific data
+    const cleanup = realTimeFetching(
+      user.username,
       (newPirData) => {
         setPirChartData(newPirData);
         setLastUpdate(new Date().toLocaleTimeString());
       },
-      (newPasswordHistory) => {
-        setPasswordHistory(newPasswordHistory);
+      (newDoorHistory) => {
+        setDoorHistoryData(newDoorHistory);
         setLastUpdate(new Date().toLocaleTimeString());
       },
-      (newPasswordHistoryChart) => {
-        setPasswordHistoryChartData(newPasswordHistoryChart);
-        setLastUpdate(new Date().toLocaleTimeString());
-      },
-      2000 // Poll every 2 seconds
+      2000
     );
 
     return () => {
-      cleanup(); // Stop Firebase polling
+      cleanup();
     };
   }, [user]);
 
@@ -74,24 +76,29 @@ const Dashboard = ({ user, onLogout }) => {
   };
 
   const handleCloseSuccessAlert = () => {
-    setShowSuccessAlert(false);
     setSuccessMessage("");
+    setShowSuccessAlert(false);
   };
 
-  const formatPasswordHistoryForDisplay = () => {
-    if (!passwordHistory || typeof passwordHistory !== "object") return [];
+  const handleServoControl = async () => {
+    setServoLoading(true);
+    setServoMessage("");
 
-    return Object.entries(passwordHistory)
-      .map(([key, value]) => ({
-        id: key,
-        ...value,
-        timestamp: value.time || value.timestamp || new Date().toISOString(),
-      }))
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 10); // Show last 10 entries
+    try {
+      const result = await controlServo(servoAction);
+      setServoMessage(
+        `Lệnh ${
+          servoAction === "open" ? "mở" : "đóng"
+        } cửa đã được gửi thành công!`
+      );
+      console.log("Servo control result:", result);
+    } catch (error) {
+      setServoMessage(`Lỗi: ${error.message}`);
+      console.error("Servo control error:", error);
+    } finally {
+      setServoLoading(false);
+    }
   };
-
-  // Remove the old useEffect for chart data processing since it's now handled in real-time
 
   return (
     <div>
@@ -99,7 +106,7 @@ const Dashboard = ({ user, onLogout }) => {
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             {" "}
-            LockGuard Dashboard - User {user.username}
+            LockGuard Dashboard - Người dùng {user.username}
           </Typography>
           <Button
             color="inherit"
@@ -107,7 +114,7 @@ const Dashboard = ({ user, onLogout }) => {
             onClick={() => setChangePasswordModalOpen(true)}
             sx={{ mr: 2 }}
           >
-            Change Password Key
+            Đổi mật khẩu khoá
           </Button>
           <Button color="inherit" onClick={handleLogout}>
             {" "}
@@ -122,10 +129,6 @@ const Dashboard = ({ user, onLogout }) => {
             {" "}
             Dashboard Giám Sát{" "}
           </Typography>
-          <Typography variant="body1">
-            Theo dõi trạng thái cảm biến PIR và lịch sử kiểm tra mật khẩu của{" "}
-            {user.username}
-          </Typography>
           {lastUpdate && (
             <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
               Cập nhật lần cuối: {lastUpdate}
@@ -135,7 +138,7 @@ const Dashboard = ({ user, onLogout }) => {
 
         {/* Firebase Real-time Data */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -171,70 +174,147 @@ const Dashboard = ({ user, onLogout }) => {
             </Card>
           </Grid>
 
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={4}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Lịch sử kiểm tra mật khẩu
+                  Trạng thái cửa hiện tại
                 </Typography>
-                {passwordHistory ? (
-                  <Box sx={{ maxHeight: 200, overflow: "auto" }}>
-                    {formatPasswordHistoryForDisplay().map((log, index) => (
-                      <Box
-                        key={log.id || index}
-                        sx={{
-                          mb: 1,
-                          p: 1,
-                          bgcolor: log.success
-                            ? "success.light"
-                            : "error.light",
-                          borderRadius: 1,
-                          opacity: 0.8,
-                        }}
-                      >
-                        <Typography variant="body2">
-                          <strong>Kết quả:</strong>{" "}
-                          {log.success ? "Thành công" : "Thất bại"}
-                        </Typography>
-                        {log.timestamp && (
-                          <Typography variant="caption" color="textSecondary">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </Typography>
-                        )}
-                      </Box>
-                    ))}
+                {doorHistoryData && doorHistoryData.length > 0 ? (
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Chip
+                        label={
+                          doorHistoryData[doorHistoryData.length - 1]
+                            ?.status === "open"
+                            ? "MỞ"
+                            : "ĐÓNG"
+                        }
+                        color={
+                          doorHistoryData[doorHistoryData.length - 1]
+                            ?.status === "open"
+                            ? "warning"
+                            : "success"
+                        }
+                        variant="filled"
+                        icon={
+                          doorHistoryData[doorHistoryData.length - 1]
+                            ?.status === "open" ? (
+                            <LockOpenIcon />
+                          ) : (
+                            <LockIcon />
+                          )
+                        }
+                      />
+                      <Typography variant="body2">
+                        {doorHistoryData[doorHistoryData.length - 1]?.status ===
+                        "open"
+                          ? "Cửa đang mở"
+                          : "Cửa đang đóng"}
+                      </Typography>
+                    </Box>
+                    {doorHistoryData[doorHistoryData.length - 1]?.timestamp && (
+                      <Typography variant="caption" color="textSecondary">
+                        Cập nhật:{" "}
+                        {new Date(
+                          doorHistoryData[doorHistoryData.length - 1]?.timestamp
+                        ).toLocaleString()}
+                      </Typography>
+                    )}
                   </Box>
                 ) : (
                   <Typography variant="body2" color="textSecondary">
-                    Đang tải dữ liệu lịch sử...
+                    Đang tải trạng thái cửa...
                   </Typography>
                 )}
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} md={4}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Điều khiển cửa
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  <ToggleButtonGroup
+                    value={servoAction}
+                    exclusive
+                    onChange={(event, newAction) => {
+                      if (newAction !== null) {
+                        setServoAction(newAction);
+                      }
+                    }}
+                    aria-label="servo action"
+                    fullWidth
+                  >
+                    <ToggleButton value="open" aria-label="open door">
+                      <LockOpenIcon sx={{ mr: 1 }} />
+                      Mở cửa
+                    </ToggleButton>
+                    <ToggleButton value="close" aria-label="close door">
+                      <LockIcon sx={{ mr: 1 }} />
+                      Đóng cửa
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+
+                  <Button
+                    variant="contained"
+                    onClick={handleServoControl}
+                    disabled={servoLoading}
+                    fullWidth
+                    startIcon={
+                      servoLoading ? (
+                        <CircularProgress size={20} />
+                      ) : servoAction === "open" ? (
+                        <LockOpenIcon />
+                      ) : (
+                        <LockIcon />
+                      )
+                    }
+                  >
+                    {servoLoading
+                      ? "Đang xử lý..."
+                      : `${servoAction === "open" ? "Mở" : "Đóng"} cửa`}
+                  </Button>
+
+                  {servoMessage && (
+                    <Typography
+                      variant="body2"
+                      color={servoMessage.includes("Lỗi") ? "error" : "success"}
+                      sx={{ textAlign: "center" }}
+                    >
+                      {servoMessage}
+                    </Typography>
+                  )}
+                </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
         <LineChart
-          title={`PIR Detection Data for ${user.username} (Last 10 Points)`}
+          title={`Dữ liệu cảm biến PIR của ${user.username} (10 điểm gần đây)`}
           data={pirChartData}
         />
 
         <Box sx={{ mt: 4 }}>
           <LineChart
-            title={`Password Check History for ${user.username} (Last 10 Points)`}
-            data={passwordHistoryChartData}
+            title={`Lịch sử trạng thái cửa của ${user.username} (10 điểm gần đây)`}
+            data={doorHistoryData}
           />
         </Box>
       </div>
 
-      {/* Change Password Key Modal */}
       <ChangePasswordKeyModal
         open={changePasswordModalOpen}
         onClose={() => setChangePasswordModalOpen(false)}
         onSuccess={handlePasswordKeySuccess}
       />
 
-      {/* Success Alert */}
       <Snackbar
         open={showSuccessAlert}
         autoHideDuration={6000}

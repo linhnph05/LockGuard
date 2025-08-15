@@ -1,16 +1,15 @@
 const mqtt = require("mqtt");
 const db = require("./db");
-const {createTransporter} = require("./routes/auth");
+const { createTransporter } = require("./routes/auth");
 const FirebaseManager = require("./firebase");
-
 
 class MQTTManager {
   constructor() {
     this.client = null;
     this.subscribedTopics = new Set();
-    this.mqttBrokerUrl = process.env.MQTT_BROKER_URL || "mqtt://localhost:1883";
-    this.mqttUsername = process.env.MQTT_USERNAME || "";
-    this.mqttPassword = process.env.MQTT_PASSWORD || "";
+    this.mqttBrokerUrl = process.env.MQTT_BROKER_URL;
+    this.mqttUsername = process.env.MQTT_USERNAME;
+    this.mqttPassword = process.env.MQTT_PASSWORD;
     this.firebase = new FirebaseManager();
 
     this.init();
@@ -25,7 +24,6 @@ class MQTTManager {
       keepalive: 60,
     };
 
-    // Add credentials if provided
     if (this.mqttUsername && this.mqttPassword) {
       options.username = this.mqttUsername;
       options.password = this.mqttPassword;
@@ -79,7 +77,12 @@ class MQTTManager {
   }
 
   async subscribeToUserTopics(username) {
-    const topics = [`${username}/esp32/pir`, `${username}/esp32/password`, `${username}/esp32/notify`];
+    const topics = [
+      `${username}/esp32/pir`,
+      `${username}/esp32/password`,
+      `${username}/esp32/notify`,
+      `${username}/esp32/door`,
+    ];
 
     for (const topic of topics) {
       if (!this.subscribedTopics.has(topic)) {
@@ -118,6 +121,9 @@ class MQTTManager {
         case "notify":
           await this.handleNotification(username, message);
           break;
+        case "door":
+          await this.handleDoorData(username, message);
+          break;
         default:
           console.log(`Unknown sensor type: ${sensorType}`);
       }
@@ -142,16 +148,12 @@ class MQTTManager {
 
       if (isValid) {
         console.log(`Valid password received for user ${username}`);
-        // Write success to Firebase
-        await this.firebase.writePasswordHistory(username, true);
 
         this.publishToUserTopic(username, "led", "green");
         this.publishToUserTopic(username, "buzzer", "buzzer_success");
         this.publishToUserTopic(username, "servo", "open");
       } else {
         console.log(`Invalid password received for user ${username}`);
-        // Write failure to Firebase
-        await this.firebase.writePasswordHistory(username, false);
 
         this.publishToUserTopic(username, "led", "red");
         this.publishToUserTopic(username, "buzzer", "buzzer_fail");
@@ -193,12 +195,17 @@ class MQTTManager {
   }
 
   async handleNotification(username, notificationValue) {
-    if(notificationValue === "1") {
+    if (notificationValue === "1") {
       try {
-        const [users] = await db.query("SELECT email FROM users WHERE username = ?", [username]);
+        const [users] = await db.query(
+          "SELECT email FROM users WHERE username = ?",
+          [username]
+        );
         if (users.length > 0) {
           const userEmail = users[0].email;
-          console.log(`Sending notification to ${userEmail}: Someone is at the door!`);
+          console.log(
+            `Sending notification to ${userEmail}: Someone is at the door!`
+          );
           const transporter = createTransporter();
           const dashboardUrl = "http://localhost/";
           const mailOptions = {
@@ -217,12 +224,33 @@ class MQTTManager {
             console.error("Gửi thông báo email thất bại:", emailError);
           }
         }
-        await fetch(`https://www.pushsafer.com/api?k=i0aigx951gH6kX0mtQfD&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`, {
-          method: "GET",
-        });
+        await fetch(
+          `https://www.pushsafer.com/api?k=i0aigx951gH6kX0mtQfD&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`,
+          {
+            method: "GET",
+          }
+        );
       } catch (error) {
         console.error("Error handling notification:", error);
       }
+    }
+  }
+
+  async handleDoorData(username, doorStatus) {
+    try {
+      // Validate door status
+      if (doorStatus !== "open" && doorStatus !== "close") {
+        console.log(
+          `Invalid door status received for user ${username}: ${doorStatus}`
+        );
+        return;
+      }
+
+      // Write to Firebase
+      await this.firebase.writeDoorHistory(username, doorStatus);
+      console.log(`Door status stored for user ${username}: ${doorStatus}`);
+    } catch (error) {
+      console.error("Error handling door data:", error);
     }
   }
 }

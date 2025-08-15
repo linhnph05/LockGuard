@@ -39,27 +39,7 @@ export const fetchUserPirData = async (username, date = getCurrentDate()) => {
   }
 };
 
-export const fetchUserPasswordHistory = async (
-  username,
-  date = getCurrentDate()
-) => {
-  try {
-    const url = `${FIREBASE_BASE_URL}/${username}/${date}/historyCheckPassword.json`;
-    console.log("Fetching password history from:", url);
-    const response = await fetch(url, fetchOptions);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    console.log("Password history data:", data);
-    return data;
-  } catch (error) {
-    console.error("Error fetching password history:", error);
-    return null;
-  }
-};
-
-export const fetchUserPirDataMultipleDays = async (username, days = 7) => {
+export const fetchUserPirDataMultipleDays = async (username, days = 14) => {
   try {
     console.log(`Fetching PIR data for user: ${username}, last ${days} days`);
     const dates = getRecentDates(days);
@@ -72,9 +52,8 @@ export const fetchUserPirDataMultipleDays = async (username, days = 7) => {
         Object.entries(dayData).forEach(([key, value]) => {
           combinedData.push({
             id: `${dates[index]}_${key}`,
-            timestamp:
-              value.time || value.timestamp || new Date().toISOString(),
-            value: value.pir !== undefined ? value.pir : 0, // Ensure we get the pir field
+            timestamp: value.time,
+            value: value.pir,
             date: dates[index],
             ...value,
           });
@@ -82,11 +61,8 @@ export const fetchUserPirDataMultipleDays = async (username, days = 7) => {
       }
     });
 
-    const sortedData = combinedData
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-      .slice(-10);
-
-    console.log(`Processed PIR data for ${username}:`, sortedData);
+    const sortedData = combinedData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-10);
+    console.log(`Processed last 10 PIR data points for ${username}:`, sortedData);
     return sortedData;
   } catch (error) {
     console.error("Error fetching multi-day PIR data:", error);
@@ -94,30 +70,41 @@ export const fetchUserPirDataMultipleDays = async (username, days = 7) => {
   }
 };
 
-export const fetchUserPasswordHistoryMultipleDays = async (
-  username,
-  days = 7
-) => {
+export const fetchUserDoorHistory = async (username, date = getCurrentDate()) => {
+  try {
+    const url = `${FIREBASE_BASE_URL}/${username}/${date}/historyDoor.json`;
+    console.log("Fetching door history from:", url);
+    const response = await fetch(url, fetchOptions);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    console.log("Door history data:", data);
+    return data;
+  } catch (error) {
+    console.error("Error fetching door history:", error);
+    return null;
+  }
+};
+
+export const fetchUserDoorHistoryMultipleDays = async (username, days = 14) => {
   try {
     console.log(
-      `Fetching password history for user: ${username}, last ${days} days`
+      `Fetching door history for user: ${username}, last ${days} days`
     );
     const dates = getRecentDates(days);
-    const promises = dates.map((date) =>
-      fetchUserPasswordHistory(username, date)
-    );
+    const promises = dates.map((date) => fetchUserDoorHistory(username, date));
     const results = await Promise.all(promises);
 
-    // Combine all data and flatten
     const combinedData = [];
     results.forEach((dayData, index) => {
       if (dayData && typeof dayData === "object") {
         Object.entries(dayData).forEach(([key, value]) => {
           combinedData.push({
             id: `${dates[index]}_${key}`,
-            timestamp:
-              value.time || value.timestamp || new Date().toISOString(),
-            value: value.success ? 1 : 0, // Convert success to 1/0
+            timestamp: value.time,
+            value: value.open, 
+            status: value.open ? "open" : "close",
             date: dates[index],
             ...value,
           });
@@ -125,63 +112,47 @@ export const fetchUserPasswordHistoryMultipleDays = async (
       }
     });
 
-    const sortedData = combinedData
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-      .slice(-10);
-
-    console.log(`Processed password history data for ${username}:`, sortedData);
+    const sortedData = combinedData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-10);
+    console.log(`Processed last 10 door history data points for ${username}:`, sortedData);
     return sortedData;
   } catch (error) {
-    console.error("Error fetching multi-day password history:", error);
+    console.error("Error fetching multi-day door history:", error);
     return [];
   }
 };
 
-export const startRealTimePolling = (
+export const realTimeFetching = (
   username,
   onPirDataUpdate,
-  onPasswordHistoryUpdate,
-  onPasswordHistoryChartUpdate,
+  onDoorHistoryUpdate,
   interval = 2000
 ) => {
-  let isPolling = true;
+  let isFetching = true;
 
-  const pollData = async () => {
-    if (!isPolling) return;
+  const fetchData = async () => {
+    if (!isFetching) return;
 
     try {
-      const [pirData, passwordHistory, passwordHistoryChart] =
-        await Promise.all([
-          fetchUserPirDataMultipleDays(username, 3), // Get last 3 days of data
-          fetchUserPasswordHistory(username), // Current day for display
-          fetchUserPasswordHistoryMultipleDays(username, 3), // Last 3 days for chart
-        ]);
+      const [pirData, doorHistory] = await Promise.all([
+        fetchUserPirDataMultipleDays(username, 14), 
+        fetchUserDoorHistoryMultipleDays(username, 14), 
+      ]);
 
-      if (isPolling && pirData !== null) {
+      if (isFetching && pirData !== null) {
         onPirDataUpdate(pirData);
       }
 
-      if (isPolling && passwordHistory !== null) {
-        onPasswordHistoryUpdate(passwordHistory);
-      }
-
-      if (isPolling && passwordHistoryChart !== null) {
-        onPasswordHistoryChartUpdate(passwordHistoryChart);
+      if (isFetching && doorHistory !== null) {
+        onDoorHistoryUpdate(doorHistory);
       }
     } catch (error) {
-      console.error("Error in polling:", error);
+      console.error("Error in fetching:", error);
     }
   };
-
-  // Initial fetch
-  pollData();
-
-  // Set up interval
-  const intervalId = setInterval(pollData, interval);
-
-  // Return cleanup function
+  fetchData();
+  const intervalId = setInterval(fetchData, interval);
   return () => {
-    isPolling = false;
+    isFetching = false;
     clearInterval(intervalId);
   };
 };

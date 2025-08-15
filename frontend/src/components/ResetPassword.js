@@ -44,12 +44,6 @@ const ResetPassword = () => {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự");
-      setLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch(
         "/api/auth/reset-password",
