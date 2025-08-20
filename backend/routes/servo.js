@@ -39,6 +39,8 @@ servoRoutes.post("/control", verifyToken, async (req, res) => {
     }
 
     mqttManager.publishToUserTopic(username, "servo", action);
+    mqttManager.publishToUserTopic(username, "led", action === "open" ? "green" : "red");
+    mqttManager.publishToUserTopic(username, "buzzer", action === "open" ? "buzzer_success" : "buzzer_fail");
 
     res.json({
       message: `Servo ${action} command sent successfully`,

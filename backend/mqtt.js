@@ -207,7 +207,7 @@ class MQTTManager {
             `Sending notification to ${userEmail}: Someone is at the door!`
           );
           const transporter = createTransporter();
-          const dashboardUrl = "http://localhost/";
+          const dashboardUrl = process.env.PUBLIC_URL || "http://localhost/";
           const mailOptions = {
             from: process.env.EMAIL_USER,
             to: userEmail,
@@ -225,7 +225,9 @@ class MQTTManager {
           }
         }
         await fetch(
-          `https://www.pushsafer.com/api?k=i0aigx951gH6kX0mtQfD&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`,
+          // `https://www.pushsafer.com/api?k=i0aigx951gH6kX0mtQfD&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`,
+          `https://www.pushsafer.com/api?k=slI0bRz9NSpjw1eW2thh&m=%5Bcolor%3D%23000000%5DLockGuard%20-%20Ai%20%C4%91%C3%B3%20%C4%91ang%20c%E1%BB%91%20g%E1%BA%AFng%20%C4%91%E1%BB%99t%20nh%E1%BA%ADp%20nh%C3%A0%20c%E1%BB%A7a%20b%E1%BA%A1n%20${username}%20%C6%A1i!%5B%2Fcolor%5D`,
+
           {
             method: "GET",
           }

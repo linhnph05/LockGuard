@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 
 const Login = ({ onLogin }) => {
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState(0); // 0 for login, 1 for register
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
     username: "",
@@ -21,8 +21,8 @@ const Login = ({ onLogin }) => {
     password: "",
     confirmPassword: "",
   });
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState(""); // Email value
+  const [showForgotPassword, setShowForgotPassword] = useState(false); // Show forgot password modal
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

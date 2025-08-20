@@ -13,8 +13,6 @@ import {
   Chip,
   Alert,
   Snackbar,
-  ToggleButton,
-  ToggleButtonGroup,
   CircularProgress,
 } from "@mui/material";
 import {
@@ -26,13 +24,12 @@ import { realTimeFetching } from "../services/firebase";
 import { controlServo } from "../services/servo";
 
 const Dashboard = ({ user, onLogout }) => {
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null); // Time update for real-time data
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false); // Show/Hide Change Password Modal
+  const [successMessage, setSuccessMessage] = useState(""); // Success message for password change
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false); // Show success alert for password change
 
   // servo
-  const [servoAction, setServoAction] = useState("close");
   const [servoLoading, setServoLoading] = useState(false);
   const [servoMessage, setServoMessage] = useState("");
 
@@ -85,12 +82,8 @@ const Dashboard = ({ user, onLogout }) => {
     setServoMessage("");
 
     try {
-      const result = await controlServo(servoAction);
-      setServoMessage(
-        `Lệnh ${
-          servoAction === "open" ? "mở" : "đóng"
-        } cửa đã được gửi thành công!`
-      );
+      const result = await controlServo("open");
+      setServoMessage("Lệnh mở cửa đã được gửi thành công!");
       console.log("Servo control result:", result);
     } catch (error) {
       setServoMessage(`Lỗi: ${error.message}`);
@@ -240,45 +233,21 @@ const Dashboard = ({ user, onLogout }) => {
                   Điều khiển cửa
                 </Typography>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <ToggleButtonGroup
-                    value={servoAction}
-                    exclusive
-                    onChange={(event, newAction) => {
-                      if (newAction !== null) {
-                        setServoAction(newAction);
-                      }
-                    }}
-                    aria-label="servo action"
-                    fullWidth
-                  >
-                    <ToggleButton value="open" aria-label="open door">
-                      <LockOpenIcon sx={{ mr: 1 }} />
-                      Mở cửa
-                    </ToggleButton>
-                    <ToggleButton value="close" aria-label="close door">
-                      <LockIcon sx={{ mr: 1 }} />
-                      Đóng cửa
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-
                   <Button
                     variant="contained"
                     onClick={handleServoControl}
                     disabled={servoLoading}
                     fullWidth
+                    size="large"
                     startIcon={
                       servoLoading ? (
                         <CircularProgress size={20} />
-                      ) : servoAction === "open" ? (
-                        <LockOpenIcon />
                       ) : (
-                        <LockIcon />
+                        <LockOpenIcon />
                       )
                     }
                   >
-                    {servoLoading
-                      ? "Đang xử lý..."
-                      : `${servoAction === "open" ? "Mở" : "Đóng"} cửa`}
+                    {servoLoading ? "Đang xử lý..." : "Mở cửa"}
                   </Button>
 
                   {servoMessage && (
@@ -297,16 +266,14 @@ const Dashboard = ({ user, onLogout }) => {
         </Grid>
 
         <LineChart
-          title={`Dữ liệu cảm biến PIR của ${user.username} (10 điểm gần đây)`}
+          title={`Dữ liệu cảm biến PIR của ${user.username}`}
           data={pirChartData}
         />
 
-        <Box sx={{ mt: 4 }}>
-          <LineChart
-            title={`Lịch sử trạng thái cửa của ${user.username} (10 điểm gần đây)`}
-            data={doorHistoryData}
-          />
-        </Box>
+        <LineChart
+          title={`Lịch sử trạng thái cửa của ${user.username}`}
+          data={doorHistoryData}
+        />
       </div>
 
       <ChangePasswordKeyModal

@@ -32,7 +32,7 @@ services:
       - MQTT_BROKER_URL=mqtt://broker.hivemq.com:1883
       - MQTT_USERNAME=
       - MQTT_PASSWORD=
-      - PUBLIC_URL=https://3a7f80bb9757.ngrok-free.app
+      - PUBLIC_URL=https://e80a0e226b79.ngrok-free.app
     ports:
       - "5000:5000"
     depends_on:
@@ -67,4 +67,3 @@ services:
 
 networks:
   lockguard_network:
-    driver: bridge

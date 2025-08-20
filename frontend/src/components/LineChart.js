@@ -23,7 +23,6 @@ Chart.register(
 );
 
 const LineChart = ({ title, data }) => {
-  // Format timestamps for display with full date and time
   const formatTimestamp = (timestamp) => {
     try {
       const date = new Date(timestamp);
@@ -46,20 +45,10 @@ const LineChart = ({ title, data }) => {
       {
         label: title,
         data: data.map((d) => d.value),
-        borderColor: title.includes("Door")
-          ? "#2196f3"
-          : title.includes("Password")
-          ? "#ff9800"
-          : "#4caf50",
-        backgroundColor: title.includes("Door")
-          ? "rgba(33, 150, 243, 0.1)"
-          : title.includes("Password")
-          ? "rgba(255, 152, 0, 0.1)"
-          : "rgba(76, 175, 80, 0.1)",
-        tension: 0.4,
+        borderColor: "#4caf50",
+        tension: 0.4, // Smooth line
         pointRadius: 6,
         pointHoverRadius: 8,
-        fill: true,
       },
     ],
   };
@@ -72,17 +61,12 @@ const LineChart = ({ title, data }) => {
         display: false,
       },
       tooltip: {
-        mode: "index",
         intersect: false,
         callbacks: {
           label: function (context) {
             const value = context.parsed.y;
-            if (title.includes("Door")) {
+            if (title.includes("cửa")) {
               return `Trạng thái cửa: ${value === 1 ? "Mở" : "Đóng"}`;
-            } else if (title.includes("Password")) {
-              return `Kiểm tra mật khẩu: ${
-                value === 1 ? "Thành công" : "Thất bại"
-              }`;
             } else {
               return `Cảm biến PIR: ${
                 value === 1 ? "Phát hiện" : "Không phát hiện"
@@ -101,7 +85,7 @@ const LineChart = ({ title, data }) => {
         display: true,
         title: {
           display: true,
-          text: "Thời gian (Ngày/Tháng/Năm Giờ:Phút:Giây)",
+          text: "Thời gian",
         },
         ticks: {
           maxTicksLimit: 10,
@@ -113,23 +97,18 @@ const LineChart = ({ title, data }) => {
         display: true,
         title: {
           display: true,
-          text: title.includes("Door")
-            ? "Trạng thái cửa (0=Đóng, 1=Mở)"
-            : title.includes("Password")
-            ? "Kiểm tra mật khẩu (0=Thất bại, 1=Thành công)"
-            : "Cảm biến PIR (0=Không phát hiện, 1=Phát hiện)",
+          text: title.includes("cửa")
+            ? "Trạng thái cửa"
+            : "Cảm biến PIR",
         },
         min: 0,
-        max: 1.2,
+        max: 1,
         ticks: {
           stepSize: 1,
           callback: function (value) {
-            if (title.includes("Door")) {
+            if (title.includes("cửa")) {
               if (value === 0) return "Đóng";
               if (value === 1) return "Mở";
-            } else if (title.includes("Password")) {
-              if (value === 0) return "Thất bại";
-              if (value === 1) return "Thành công";
             } else {
               if (value === 0) return "Không phát hiện";
               if (value === 1) return "Phát hiện";

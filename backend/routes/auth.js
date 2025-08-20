@@ -56,9 +56,7 @@ authRoutes.post("/register", async (req, res) => {
       [email, hashedPassword, username]
     );
 
-    res
-      .status(201)
-      .json({ message: "User created successfully", userId: result.insertId });
+    res.status(201).json({ message: "User created successfully", userId: result.insertId });
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ error: "Internal server error" });

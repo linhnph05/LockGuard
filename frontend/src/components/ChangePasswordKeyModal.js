@@ -17,8 +17,8 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 const ChangePasswordKeyModal = ({ open, onClose, onSuccess }) => {
   const [newPasswordKey, setNewPasswordKey] = useState("");
   const [confirmPasswordKey, setConfirmPasswordKey] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false); // Show/Hide New Password
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Show/Hide Confirm Password
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
